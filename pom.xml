@@ -116,7 +116,13 @@
             <version>${akka.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-slf4j_${scala.major.version}</artifactId>
+            <version>${akka.version}</version>
+        </dependency>
 
+        <!-- level db for local development -->
         <dependency>
             <groupId>org.iq80.leveldb</groupId>
             <artifactId>leveldb</artifactId>
@@ -127,6 +133,13 @@
             <groupId>org.fusesource.leveldbjni</groupId>
             <artifactId>leveldbjni-all</artifactId>
             <version>1.8</version>
+        </dependency>
+
+        <!-- cassandra for better local development (and remote =)) -->
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-persistence-cassandra_${scala.major.version}</artifactId>
+            <version>0.51</version>
         </dependency>
 
     </dependencies>
