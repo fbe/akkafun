@@ -1,6 +1,7 @@
 package name.felixbecker.akkafun.actors
 
 import akka.actor.{Actor, ActorRef}
+import akka.persistence.{PersistentActor, SnapshotOffer}
 import name.felixbecker.akkafun.messages.{GreetRequest, GreetResponse, Tick}
 
 /**
@@ -15,20 +16,50 @@ class GreetingActor extends Actor {
 }
 
 
-class TickActor(greetingActor: ActorRef) extends Actor {
+class TickActor(greetingActor: ActorRef) extends PersistentActor {
 
 
   var greetResponseCounter = 0
 
+  def updateState(greetResponse: GreetResponse): Unit = {
+    greetResponseCounter += 1
+  }
+
   println(s"I am the tick actor ${self.path}")
 
-  override def receive: Receive = {
+  val snapshotInterval = 100
+
+  var recoverStateUpdateCounter = 0
+  var recoverSnapshotOfferCounter = 0
+
+  override def receiveCommand: Receive = {
     case Tick =>
       greetingActor ! GreetRequest("Oliver")
-    case GreetResponse(greeting) =>
-      greetResponseCounter += 1
+
+    case g @ GreetResponse(greeting) =>
+      persist(g){ g =>
+        updateState(g)
+        context.system.eventStream.publish(g)
+        if(lastSequenceNr % snapshotInterval == 0 && lastSequenceNr != 0){
+          println("============ Saving snapshot!")
+          saveSnapshot(greetResponseCounter)
+        }
+      }
       println(s"I (the tick actor) received a greet response: $greeting. Greeting responses processed: $greetResponseCounter")
 
   }
 
+  override def receiveRecover: Receive = {
+    case g: GreetResponse =>
+      println(s"=============== State update received! $recoverStateUpdateCounter")
+      updateState(g)
+      recoverStateUpdateCounter += 1
+    case SnapshotOffer(_, snapshot: Int) =>
+      println(s"=============== Snapshot offer received! $recoverSnapshotOfferCounter")
+      greetResponseCounter = snapshot
+      recoverSnapshotOfferCounter += 1
+  }
+
+
+  override def persistenceId: String = "tick-actor-2"
 }

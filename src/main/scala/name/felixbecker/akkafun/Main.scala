@@ -13,6 +13,6 @@ object Main extends App {
   val tickActorRef = actorSystem.actorOf(Props(classOf[TickActor], greetActorRef))
 
   import scala.concurrent.duration._
-  actorSystem.scheduler.schedule(0.milliseconds, 1.second, tickActorRef, Tick)
+  actorSystem.scheduler.schedule(2.seconds, 1000.milliseconds, tickActorRef, Tick)
 
 }
