@@ -1,11 +1,11 @@
-import akka.actor.{Actor, ActorRef, ActorSystem, Props}
+package name.felixbecker.akkafun.actors
+
+import akka.actor.{Actor, ActorRef}
+import name.felixbecker.akkafun.messages.{GreetRequest, GreetResponse, Tick}
+
 /**
   * Created by becker on 4/21/17.
   */
-
-case class GreetRequest(name: String)
-case class GreetResponse(greeting: String)
-case object Tick
 class GreetingActor extends Actor {
   override def receive: Receive = {
     case GreetRequest(name) =>
@@ -14,7 +14,9 @@ class GreetingActor extends Actor {
   }
 }
 
+
 class TickActor(greetingActor: ActorRef) extends Actor {
+
 
   var greetResponseCounter = 0
 
@@ -29,22 +31,5 @@ class TickActor(greetingActor: ActorRef) extends Actor {
       println(s"I (the tick actor) received a greet response: $greeting. Greeting responses processed: $greetResponseCounter")
 
   }
-
-}
-
-object Main extends App {
-  println("Oh Hai!")
-
-  val actorSystem = ActorSystem("test-actor-system")
-  import actorSystem.dispatcher
-
-  val greetActorRef = actorSystem.actorOf(Props[GreetingActor])
-  val tickActorRef = actorSystem.actorOf(Props(classOf[TickActor], greetActorRef))
-
-  import scala.concurrent.duration._
-
-  actorSystem.scheduler.schedule(0.milliseconds, 1.second, tickActorRef, Tick)
-
-
 
 }
