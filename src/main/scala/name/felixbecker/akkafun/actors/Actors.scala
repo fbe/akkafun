@@ -24,7 +24,6 @@ class TickActor(greetingActor: ActorRef) extends Actor {
 
   override def receive: Receive = {
     case Tick =>
-      println("Tick tock!")
       greetingActor ! GreetRequest("Oliver")
     case GreetResponse(greeting) =>
       greetResponseCounter += 1

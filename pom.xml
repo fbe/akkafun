@@ -16,6 +16,7 @@
         <scalatest.version>3.0.0</scalatest.version>
         <scalatest.mavenplugin.version>1.0</scalatest.mavenplugin.version>
         <scala.mavenplugin.version>3.2.2</scala.mavenplugin.version>
+        <akka.version>2.5.0</akka.version>
     </properties>
 
     <build>
@@ -107,7 +108,12 @@
         <dependency>
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-actor_${scala.major.version}</artifactId>
-            <version>2.5.0</version>
+            <version>${akka.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-persistence_${scala.major.version}</artifactId>
+            <version>${akka.version}</version>
         </dependency>
     </dependencies>
 
