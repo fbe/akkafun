@@ -46,7 +46,7 @@ class TickActor(greetingActor: ActorRef) extends PersistentActor with ActorLoggi
           saveSnapshot(greetResponseCounter)
         }
       }
-      log.info(s"I (the tick actor) received a greet response: $greeting. Greeting responses processed: $greetResponseCounter")
+      log.info(s"I (${self.path}) received a greet response: $greeting. Greeting responses processed: $greetResponseCounter")
 
   }
 
