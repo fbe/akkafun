@@ -2,23 +2,52 @@ package name.felixbecker.akkafun
 
 import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
 import akka.cluster.singleton.{ClusterSingletonManager, ClusterSingletonManagerSettings, ClusterSingletonProxy, ClusterSingletonProxySettings}
+import akka.persistence.{PersistentActor, RecoveryCompleted}
 import com.typesafe.config.ConfigFactory
 import name.felixbecker.akkafun.HelloWorldActor.EndMessage
 
+
+object PersistenceIds {
+  val HelloWorldActorId = "HelloWorldActorSingleton"
+}
 
 object HelloWorldActor {
   case object EndMessage
 }
 
-class HelloWorldActor() extends Actor with ActorLogging {
+class HelloWorldActor() extends Actor with ActorLogging with PersistentActor {
+
   log.info(s"Hello, i am the HelloWorldActor, my path is ${self.path}")
 
-  override def receive: Receive = {
+  var messageCounter: Int = 0
+
+  def updateState(): Unit = {
+    messageCounter += 1
+  }
+
+  override def receiveCommand: Receive = {
     case EndMessage =>
       log.info("Received an end message, stopping myself")
       context stop self
-    case x => log.info(s"Received a message $x")
+    case message: String =>
+      persist(message) { m =>
+        updateState()
+        context.system.eventStream.publish(m) // TODO what happens if i disable this?
+        log.info(s"Received a message (in receiveCommand, count is now $messageCounter): $message")
+      }
   }
+
+  override def receiveRecover: Receive = {
+    case message: String =>
+      log.info(s"State update (in receiveRecover) received: $message")
+      updateState()
+
+    case RecoveryCompleted => log.info("Yay, recovery completed!")
+    case unexpected => log.error(s"Received unexpected message in receiveRecover $unexpected")
+  }
+
+
+  override def persistenceId: String = PersistenceIds.HelloWorldActorId
 }
 
 object Main extends App {
