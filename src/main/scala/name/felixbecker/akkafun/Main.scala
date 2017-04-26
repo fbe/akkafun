@@ -1,29 +1,23 @@
 package name.felixbecker.akkafun
 
 import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
-import akka.cluster.Cluster
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
-import akka.stream.ActorMaterializer
+import akka.cluster.singleton.{ClusterSingletonManager, ClusterSingletonManagerSettings, ClusterSingletonProxy, ClusterSingletonProxySettings}
 import com.typesafe.config.ConfigFactory
-import name.felixbecker.akkafun.actors.{GreetingActor, TickActor}
-import name.felixbecker.akkafun.messages.Tick
+import name.felixbecker.akkafun.HelloWorldActor.EndMessage
 
-import scala.util.{Failure, Success}
 
-class DebugActor extends Actor with ActorLogging {
-
-  override def receive: Receive = {
-    case x => println(s"$x ${sender()}")
-  }
-
+object HelloWorldActor {
+  case object EndMessage
 }
 
-class HelloWorldActor(instanceNumber: Int) extends Actor with ActorLogging {
-  log.info(s"Hello, i am the HelloWorldActor[$instanceNumber], my path is ${self.path}")
+class HelloWorldActor() extends Actor with ActorLogging {
+  log.info(s"Hello, i am the HelloWorldActor, my path is ${self.path}")
 
   override def receive: Receive = {
-    case x => log.error(s"Received unexpected message $x")
+    case EndMessage =>
+      log.info("Received an end message, stopping myself")
+      context stop self
+    case x => log.info(s"Received a message $x")
   }
 }
 
@@ -33,50 +27,35 @@ object Main extends App {
   // context actor of für child
   implicit val executionContext = actorSystem.dispatcher
 
-  // Akka remote:
-  // ip adresse + host + port -> remote
-
-  // Akka Cluster:
-  // Aufsatz: knoten kennen sich, leader election
-
-  // Cluster Singleton Pattern (jar)
-
-  // Akka Cluster Sharding (setzt auf singleton)!
-
-  // Akka Stash
-
-  // Shutdown von Actors über Shardregion
 
   val applicationConfig = ConfigFactory.load()
   val httpBindHost = applicationConfig.getString("akka.http.server.host")
-  import scala.concurrent.duration._
-  import akka.util.Timeout
+
+  val helloWorldActorSingletonManagerProps = ClusterSingletonManager.props(
+    singletonProps = Props(classOf[HelloWorldActor]),
+    terminationMessage = EndMessage,
+    settings = ClusterSingletonManagerSettings(actorSystem)
+  )
+
+  val helloWorldActorClusterSingletonProxyProps = ClusterSingletonProxy.props(
+    singletonManagerPath = "/user/helloWorldSingleton",
+    settings = ClusterSingletonProxySettings(actorSystem)
+  )
+
+
+  actorSystem.actorOf(helloWorldActorSingletonManagerProps, name = "helloWorldSingleton")
+  val helloWorldProxyRef = actorSystem.actorOf(helloWorldActorClusterSingletonProxyProps, name = "helloWorldSingletonProxy")
 
   // only spawn actors on the "first" node
-  if(httpBindHost.endsWith("1")) {
-    (1 to 100000).foreach { instance =>
-      actorSystem.actorOf(Props(classOf[HelloWorldActor], instance), s"HelloWorldClusterActor-$instance")
-    }
-  } else if(httpBindHost.endsWith("2")){
-    Thread.sleep(5000)
-    actorSystem.actorOf(Props(classOf[HelloWorldActor], 1), "HelloWorldClusterActor-X4711")
-    val actorPath = actorSystem / "HelloWorldClusterActor-X4711"
-    println(s"Trying to resolve actor $actorPath")
-    implicit val timeout = Timeout(5.seconds)
-    actorSystem.actorSelection(actorPath).resolveOne()
-      .onComplete {
-        case Success(r) => r ! "Hello my little actor friend!"
-        case Failure(e) => e.printStackTrace()
-      }
+  if(httpBindHost.endsWith("1")) { // 127.0.0.1
+    helloWorldProxyRef ! "Greetings, this is 127.0.0.1"
+  } else if(httpBindHost.endsWith("2")) { // 127.0.0.2
+    helloWorldProxyRef ! "Greetings, this is 127.0.0.2"
   }
 
 
 
-
-
-
-
-
+/*
   if(false) {
     // old fun impl
     val greetActorRef = actorSystem.actorOf(Props[GreetingActor])
@@ -105,4 +84,5 @@ object Main extends App {
 
     val bindingFuture = Http().bindAndHandle(route, httpBindHost, 8080)
   }
+  */
 }

@@ -1,0 +1,13 @@
+  // Akka remote:
+  // ip adresse + host + port -> remote
+
+  // Akka Cluster:
+  // Aufsatz: knoten kennen sich, leader election
+
+  // Cluster Singleton Pattern (jar)
+
+  // Akka Cluster Sharding (setzt auf singleton)!
+
+  // Akka Stash
+
+  // Shutdown von Actors über Shardregion
