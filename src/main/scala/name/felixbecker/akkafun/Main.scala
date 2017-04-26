@@ -32,7 +32,8 @@ class HelloWorldActor() extends Actor with ActorLogging with PersistentActor {
     case message: String =>
       persist(message) { m =>
         updateState()
-        context.system.eventStream.publish(m) // TODO what happens if i disable this?
+        // i am currently not using the event stream. should i? TODO
+        //context.system.eventStream.publish(m)
         log.info(s"Received a message (in receiveCommand, count is now $messageCounter): $message")
       }
   }
