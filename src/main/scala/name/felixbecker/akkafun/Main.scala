@@ -1,11 +1,28 @@
 package name.felixbecker.akkafun
 
-import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
+import akka.cluster.sharding.{ClusterSharding, ClusterShardingSettings, ShardRegion}
 import akka.cluster.singleton.{ClusterSingletonManager, ClusterSingletonManagerSettings, ClusterSingletonProxy, ClusterSingletonProxySettings}
 import akka.persistence.{PersistentActor, RecoveryCompleted}
+import akka.serialization.SerializationExtension
 import com.typesafe.config.ConfigFactory
 import name.felixbecker.akkafun.HelloWorldActor.EndMessage
 
+
+/**
+  * TODO
+  * Next steps: Custom serializer
+  * Akka sharding
+  */
+
+class ShardedActor extends Actor with ActorLogging {
+
+  log.info(s"I am a ShardedActor - spawning now: ${self.path}!")
+
+  override def receive: Receive = {
+    case all => log.info(s"I am actor ${self.path} - received message $all")
+  }
+}
 
 object PersistenceIds {
   val HelloWorldActorId = "HelloWorldActorSingleton"
@@ -61,6 +78,36 @@ object Main extends App {
   val applicationConfig = ConfigFactory.load()
   val httpBindHost = applicationConfig.getString("akka.http.server.host")
 
+  case class ExampleShardMessage(id: Int, payload: String)
+
+  val numberOfShards = 100
+
+  val extractEntityId: ShardRegion.ExtractEntityId = {
+    case ExampleShardMessage(id, payload) => (id.toString, payload)
+  }
+
+  val extractShardId: ShardRegion.ExtractShardId = {
+    case ExampleShardMessage(id, _) => (id % numberOfShards).toString
+  }
+
+  val testShardRegion: ActorRef = ClusterSharding(actorSystem).start(
+    typeName = "test",
+    entityProps = Props[ShardedActor],
+    settings = ClusterShardingSettings(actorSystem),
+    extractEntityId = extractEntityId,
+    extractShardId = extractShardId
+  )
+
+
+  val serialization = SerializationExtension(actorSystem)
+
+  val serializer = serialization.findSerializerFor("Hello World!")
+
+  println(s"Serializer is $serializer")
+
+
+
+  // singleton stuff
   val helloWorldActorSingletonManagerProps = ClusterSingletonManager.props(
     singletonProps = Props(classOf[HelloWorldActor]),
     terminationMessage = EndMessage,
@@ -79,6 +126,10 @@ object Main extends App {
   // only spawn actors on the "first" node
   if(httpBindHost.endsWith("1")) { // 127.0.0.1
     helloWorldProxyRef ! "Greetings, this is 127.0.0.1"
+    //(1 to 200).foreach { x =>
+    //  testShardRegion ! ExampleShardMessage(x, s"Hello $x test shard actor!")
+     // Thread.sleep(100)
+    //}
   } else if(httpBindHost.endsWith("2")) { // 127.0.0.2
     helloWorldProxyRef ! "Greetings, this is 127.0.0.2"
   }
